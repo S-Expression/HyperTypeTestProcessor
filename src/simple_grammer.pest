@@ -1,0 +1,13 @@
+SimpleLang=_{SOI ~ expression ~ (meaningless_space ~ expression)* ~ EOI}
+
+expression = {list | string}
+string = {(!(space | left_bracket | right_bracket) ~ ANY)+} 
+list = {left_bracket ~ meaningless_space ~ expression ~ (space ~ expression)+ ~ meaningless_space ~ right_bracket}
+
+left_bracket = {"("}
+right_bracket = {")"}
+
+
+space= @{space_symbol+}
+meaningless_space = @{space_symbol*}
+space_symbol = {" " | "\n" | "\t"|"\r"}
