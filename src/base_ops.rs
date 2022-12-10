@@ -1,6 +1,5 @@
-use crate::SimLangToken::List;
-use crate::SimLangToken::Symbol;
-use crate::SimLangToken;
+use crate::parser::SimLangToken;
+use crate::parser::SimLangToken::{List, Symbol};
 
 fn quote(args: Vec<SimLangToken>) -> SimLangToken {
     compile(args[0].clone()).clone()
