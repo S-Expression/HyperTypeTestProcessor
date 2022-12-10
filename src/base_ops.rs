@@ -50,7 +50,8 @@ fn eq(args: Vec<Rc<SimLangToken>>) -> Rc<SimLangToken> {
 }
 
 fn car(args: Vec<Rc<SimLangToken>>) -> Rc<SimLangToken> {
-    compile(args[0].clone())
+    let List(ref elements) = *compile(args[0].clone()) else { unreachable!() };
+    compile(elements[0].clone())
 }
 
 fn cdr(args: Vec<Rc<SimLangToken>>) -> Rc<SimLangToken> {
