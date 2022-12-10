@@ -17,7 +17,7 @@ impl<'a> SimLangToken<'a> {
     pub(crate) fn as_str(&self) -> String {
         match self {
             SimLangToken::List(tokens) => {
-                tokens.into_iter().map(|element| format!("{} ", (&element).as_str())).collect::<String>()
+                format!("({})", tokens.into_iter().map(|element| format!("{} ", (&element).as_str())).collect::<String>())
             }
             SimLangToken::Symbol(s) => String::from(*s),
         }
