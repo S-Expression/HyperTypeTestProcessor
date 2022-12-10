@@ -1,19 +1,20 @@
+use std::rc::Rc;
 use crate::parser::SimLangToken;
 use crate::parser::SimLangToken::{List, Symbol};
 
-fn quote(args: Vec<SimLangToken>) -> SimLangToken {
-    compile(args[0].clone()).clone()
+fn quote(arg: Rc<SimLangToken>) -> Rc<SimLangToken> {
+    arg
 }
 
-fn atom(args: Vec<SimLangToken>) -> SimLangToken {
-    Symbol(match compile(args[0].clone()) {
+fn atom(args: Vec<Rc<SimLangToken>>) -> Rc<SimLangToken> {
+    Rc::new(Symbol(match *compile(args[0].clone()) {
         List(_) => "f",
         Symbol(_) => "t"
-    })
+    }))
 }
 
 
-fn eq(args: Vec<SimLangToken>) -> SimLangToken {
+fn eq(args: Vec<Rc<SimLangToken>>) -> Rc<SimLangToken> {
     let left = compile(args[0].clone());
     let right = compile(args[1].clone());
 
@@ -45,38 +46,42 @@ fn eq(args: Vec<SimLangToken>) -> SimLangToken {
         }
     }
 
-    Symbol(if test(&left, &right) { "t" } else { "f" })
+    Rc::new(Symbol(if test(&left, &right) { "t" } else { "f" }))
 }
 
-fn car(args: Vec<SimLangToken>) -> SimLangToken {
+fn car(args: Vec<Rc<SimLangToken>>) -> Rc<SimLangToken> {
     compile(args[0].clone())
 }
 
-fn cdr(args: Vec<SimLangToken>) -> SimLangToken {
-    let List(elements) = compile(args[0].clone()) else { unreachable!() };
-    List(elements[1..].to_vec())
+fn cdr(args: Vec<Rc<SimLangToken>>) -> Rc<SimLangToken> {
+    let List(ref elements) = *(compile(args[0].clone())) else { unreachable!() };
+    let inner = elements[1..].to_vec();
+    return if inner.len() == 1 {
+        inner[0].clone()
+    } else {
+        Rc::new(List(inner))
+    }
 }
 
-fn cons(args: Vec<SimLangToken>) -> SimLangToken {
+fn cons(args: Vec<Rc<SimLangToken>>) -> Rc<SimLangToken> {
     let first = compile(args[0].clone());
     let second = compile(args[1].clone());
 
-    let mut x = match first {
-        List(vector) => vector,
+    let mut x = match *(first) {
+        List(ref vector) => vector.clone(),
         Symbol(_) => vec![first]
     };
-    let List(mut y) = second else { unreachable!() };
+    let List(ref y) = *(second) else { unreachable!() };
 
-    x.append(&mut y);
+    x.append(&mut y.clone());
 
-    List(x)
+    Rc::new(List(x))
 }
 
-fn cond(args: Vec<SimLangToken>) -> SimLangToken {
+fn cond(args: Vec<Rc<SimLangToken>>) -> Rc<SimLangToken> {
     for arg in args {
-        let compiled = compile(arg);
-        let List(elements) = compiled else { unreachable!() };
-        let Symbol(b) = compile(elements[0].clone()) else { unreachable!() };
+        let List(ref elements) = *compile(arg) else { unreachable!() };
+        let Symbol(b) = *compile(elements[0].clone()) else { unreachable!() };
         if b == "t" {
             return elements[1].clone();
         }
@@ -84,16 +89,16 @@ fn cond(args: Vec<SimLangToken>) -> SimLangToken {
     panic!("Unable to find matching case!");
 }
 
-pub fn compile(token: SimLangToken) -> SimLangToken {
-    let List(elements) = &token else { return token };
+pub fn compile(token: Rc<SimLangToken>) -> Rc<SimLangToken> {
+    let List(ref elements) = *token else { return token };
 
-    let first = &elements[0];
-    let Symbol(operator) = first else { return token };
+    let first = elements[0].clone();
+    let Symbol(operator) = *first else { return token };
 
     let no_first = (elements[1..]).to_vec();
 
-    match *operator {
-        "quote" => quote(no_first),
+    match operator {
+        "quote" => quote(no_first[0].clone()),
         "atom" => atom(no_first),
         "eq" => eq(no_first),
         "car" => car(no_first),

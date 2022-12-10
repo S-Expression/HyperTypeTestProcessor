@@ -1,3 +1,4 @@
+use std::rc::Rc;
 //일단 여기에 코드를 짜고 나중에 lib로 바꾸기
 use pest::Parser;
 use pest::error::Error;
@@ -7,9 +8,8 @@ use pest::iterators::Pair;
 #[grammar = "simple_grammer.pest"]
 struct SimParser;
 
-//지금은 수행평가 만드는 중이니까 나중에 메타 심볼 추가하기
 pub enum SimLangToken<'a> {
-    List(Vec<SimLangToken<'a>>),
+    List(Vec<Rc<SimLangToken<'a>>>),
     Symbol(&'a str), //메타 심볼도 파싱 단계에서 얘로 바뀐다.
 }
 
@@ -37,16 +37,11 @@ impl Clone for SimLangToken<'_> {
     }
 }
 
-pub fn parse_simlang(contents: &str) -> Result<Vec<SimLangToken>, Error<Rule>> {
+pub fn parse_simlang(contents: &str) -> Result<Vec<Rc<SimLangToken>>, Error<Rule>> {
     let parsed = SimParser::parse(Rule::SimpleLang, &contents)?;
 
-    fn parse_expression(pair: Pair<Rule>) -> SimLangToken {
-        match pair.as_rule() {
-            Rule::expression => {
-                // println!("expression 발견");
-                panic!("dsfa")
-                //  parse_value(pair.into_inner().next().unwrap())
-            }
+    fn parse_expression(pair: Pair<Rule>) -> Rc<SimLangToken> {
+        Rc::new(match pair.as_rule() {
             Rule::list => SimLangToken::List(pair.into_inner().map(parse_expression).collect()),
             Rule::string => SimLangToken::Symbol(pair.as_str()),
             /*
@@ -62,10 +57,10 @@ pub fn parse_simlang(contents: &str) -> Result<Vec<SimLangToken>, Error<Rule>> {
             _ => {
                 unreachable!("{}", pair.as_str());
             }
-        }
+        })
     }
 
-    let ast: Vec<SimLangToken> = parsed.filter_map(|pair| {
+    let ast: Vec<Rc<SimLangToken>> = parsed.filter_map(|pair| {
         return if pair.as_rule() == Rule::EOI {
             None
         } else {
