@@ -1,13 +1,13 @@
-SimpleLang=_{SOI ~ expression ~ (meaningless_space ~ expression)* ~ EOI}
-
-expression = {list | string}
-string = {(!(space | left_bracket | right_bracket) ~ ANY)+} 
+SimpleLang=_{SOI ~  meaningless_space ~ (expression ~ meaningless_space)* ~ EOI}
+expression = _{list | string}
+string = {(!(space | left_bracket | right_bracket) ~ ANY)+}
 list = {left_bracket ~ meaningless_space ~ expression ~ (space ~ expression)+ ~ meaningless_space ~ right_bracket}
 
-left_bracket = {"("}
-right_bracket = {")"}
+left_bracket = _{"("}
+right_bracket = _{")"}
 
 
-space= @{space_symbol+}
-meaningless_space = @{space_symbol*}
-space_symbol = {" " | "\n" | "\t"|"\r"}
+space= _{space_symbol+}
+meaningless_space = _{space_symbol*}
+space_symbol = _{" " | "\n" | "\t"|"\r"}
+
