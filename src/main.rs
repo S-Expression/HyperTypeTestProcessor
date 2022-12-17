@@ -1,5 +1,6 @@
 mod base_ops;
 mod parser;
+mod semantic_analyzer;
 
 extern crate pest;
 #[macro_use]
@@ -13,6 +14,7 @@ use crate::parser::parse_simlang;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    
     if args.len() > 1 {
         let contents = fs::read_to_string(&args[1]).expect("cannot read file");
         parse_simlang(&contents)

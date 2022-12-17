@@ -8,6 +8,10 @@ use pest::iterators::Pair;
 #[grammar = "simple_grammer.pest"]
 struct SimParser;
 
+/*
+Peg 문법으로 어휘, 구문 분석을 해 파스 트리를 만드는 라이브러리. pest라는 peg 파서를 사용했다. 
+*/
+
 pub enum SimLangToken<'a> {
     List(Vec<Rc<SimLangToken<'a>>>),
     Symbol(&'a str), //메타 심볼도 파싱 단계에서 얘로 바뀐다.
