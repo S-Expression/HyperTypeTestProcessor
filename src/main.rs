@@ -1,6 +1,7 @@
 mod base_ops;
 mod parser;
 mod semantic_analyzer;
+mod test;
 
 extern crate pest;
 #[macro_use]

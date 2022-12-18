@@ -1,9 +1,7 @@
-use core::panic;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
+use once_cell::sync::Lazy;
 use crate::parser::SimLangToken;
-use crate::parser::SimLangToken::{List, Symbol};
-use crate::base_ops;
 
 /*
 타입 오류를 검사하는 라이브러리.
@@ -14,13 +12,48 @@ Lambda나 재귀함수와 같이 기호테이블을 수정하는 등 내부 구�
 simbol_table은  
 
 */
+static mut FUNCTIONS: Lazy<HashMap<String, HashMap<Arc<SimLangToken>, Arc<SimLangToken>>>> = Lazy::new(|| {
+    HashMap::new()
+});
 
+pub fn put_symbol<'a>(function_name: String, arguments: &Arc<SimLangToken<'static>>, result: &Arc<SimLangToken<'static>>) -> Option<Arc<SimLangToken<'a>>> {
+    unsafe {
+        match FUNCTIONS.get_mut(function_name.as_str()) {
+            None => {
+                let mut new_map: HashMap<Arc<SimLangToken>, Arc<SimLangToken>> = HashMap::new();
+                new_map.insert(arguments.clone(), result.clone());
+                FUNCTIONS.insert(function_name, new_map);
+                None
+            }
+            Some(existing) => {
+                existing.insert(arguments.clone(), result.clone())
+            }
+        }
+    }
+}
+
+pub fn get_symbol<'a>(function_name: &'a str, arguments: &Arc<SimLangToken<'a>>) -> Option<Arc<SimLangToken<'a>>> {
+    unsafe {
+        match FUNCTIONS.get(function_name) {
+            None => { None }
+            Some(existing) => {
+                println!("{}", existing.keys().map(|key| key.as_str()).collect::<String>());
+                match existing.get(arguments.as_ref()) {
+                    None => { None }
+                    Some(result) => {
+                        Some(result.clone())
+                    }
+                }
+            }
+        }
+    }
+}
 
 struct Const<'a>{
     /*상수. 모두 입력받아 하나의 값을 출력하는 상수 함수의 개념으로 생각하면 굳이 필요한 구현은 아니지만 속도 향상을 위해 정의했다.
     일반적인 프로그램에서 변수의 역할과 같다고 할 수 있다.
     */
-    value: Rc<SimLangToken<'a>>
+    value: Arc<SimLangToken<'a>>
 }
 struct Lambda<'a> {  
     /* SimplLangToken의 lambda 연산을 최적화? 한 상태이자 정의역 치역을 알려주는 함수
@@ -30,8 +63,8 @@ struct Lambda<'a> {
 
     공간복잡도가 너무 커진다고 느낄 수 있으나 여기서 정의하는 Lambda는 순수함수 이고 변수의 이름 대신 SimLangToken으로 입출력 변수를 구분하기 때문에 오히려 공간 복잡도를 줄일 수 있다....?는 검토가 필요하다.
     */
-    domain: Vec<Rc<SimLangToken<'a>>>, //입력 가능한 i개의 정의역. 
-    range: Vec<Rc<SimLangToken<'a>>>, //i번째 입력에 대응하는 i개의 츨력(치역) 
+    domain: Vec<Arc<SimLangToken<'a>>>, //입력 가능한 i개의 정의역.
+    range: Vec<Arc<SimLangToken<'a>>>, //i번째 입력에 대응하는 i개의 츨력(치역)
 }
 
 enum Variable{
@@ -49,4 +82,3 @@ fn compose
 fn label(name:String, key:Variable)  {// der 연산
    // let mut simbol_table = HashMap::new();
 }
-

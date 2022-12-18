@@ -1,4 +1,5 @@
-use std::rc::Rc;
+use std::hash::Hash;
+use std::sync::Arc;
 //일단 여기에 코드를 짜고 나중에 lib로 바꾸기
 use pest::Parser;
 use pest::error::Error;
@@ -12,18 +13,38 @@ struct SimParser;
 Peg 문법으로 어휘, 구문 분석을 해 파스 트리를 만드는 라이브러리. pest라는 peg 파서를 사용했다. 
 */
 
+#[derive(Hash)]
+#[derive(Eq, PartialEq)]
+#[derive(Debug)]
 pub enum SimLangToken<'a> {
-    List(Vec<Rc<SimLangToken<'a>>>),
+    List(Vec<Arc<SimLangToken<'a>>>),
     Symbol(&'a str), //메타 심볼도 파싱 단계에서 얘로 바뀐다.
 }
 
 impl<'a> SimLangToken<'a> {
-    pub(crate) fn as_str(&self) -> String {
+    pub fn as_str(&self) -> String {
         match self {
             SimLangToken::List(tokens) => {
                 format!("({})", tokens.into_iter().map(|element| format!("{} ", (&element).as_str())).collect::<String>())
             }
             SimLangToken::Symbol(s) => String::from(*s),
+        }
+    }
+
+    pub fn contains(&self, other: &Arc<SimLangToken>) -> bool {
+        let SimLangToken::List(elements) = self else { return false };
+        match other.as_ref() {
+            SimLangToken::List(other_elements) => {
+                for other_element in other_elements {
+                    if !elements.contains(other_element) {
+                        return false
+                    }
+                }
+                true
+            }
+            SimLangToken::Symbol(_) => {
+                elements.contains(other)
+            }
         }
     }
 }
@@ -41,11 +62,11 @@ impl Clone for SimLangToken<'_> {
     }
 }
 
-pub fn parse_simlang(contents: &str) -> Result<Vec<Rc<SimLangToken>>, Error<Rule>> {
+pub fn parse_simlang(contents: &str) -> Result<Vec<Arc<SimLangToken>>, Error<Rule>> {
     let parsed = SimParser::parse(Rule::SimpleLang, &contents)?;
 
-    fn parse_expression(pair: Pair<Rule>) -> Rc<SimLangToken> {
-        Rc::new(match pair.as_rule() {
+    fn parse_expression(pair: Pair<Rule>) -> Arc<SimLangToken> {
+        Arc::new(match pair.as_rule() {
             Rule::list => SimLangToken::List(pair.into_inner().map(parse_expression).collect()),
             Rule::string => SimLangToken::Symbol(pair.as_str()),
             /*
@@ -64,7 +85,7 @@ pub fn parse_simlang(contents: &str) -> Result<Vec<Rc<SimLangToken>>, Error<Rule
         })
     }
 
-    let ast: Vec<Rc<SimLangToken>> = parsed.filter_map(|pair| {
+    let ast: Vec<Arc<SimLangToken>> = parsed.filter_map(|pair| {
         return if pair.as_rule() == Rule::EOI {
             None
         } else {
