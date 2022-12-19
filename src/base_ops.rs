@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::parser::SimLangToken;
 use crate::parser::SimLangToken::{List, Symbol};
 use crate::semantic_analyzer::get_symbol;
+use crate::semantic_analyzer::Variable::Lambda;
 
 /*
 개발 계획: 
@@ -21,14 +22,14 @@ fn quote(arg: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
     Arc::new(List(arg))
 }
 
-fn atom(args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
+fn atom<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
     Arc::new(Symbol(match *compile(args[0].clone()) {
         List(_) => "f",
         Symbol(_) => "t"
     }))
 }
 
-fn eq(args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
+fn eq<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
     let left = compile(args[0].clone());
     let right = compile(args[1].clone());
 
@@ -63,12 +64,12 @@ fn eq(args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
     Arc::new(Symbol(if test(&left, &right) { "t" } else { "f" }))
 }
 
-fn car(args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
+pub(crate) fn car<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
     let List(ref elements) = *compile(args[0].clone()) else { unreachable!() };
     compile(elements[0].clone())
 }
 
-fn cdr(args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
+pub(crate) fn cdr<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
     let List(ref elements) = *(compile(args[0].clone())) else { unreachable!() };
     let inner = elements[1..].to_vec();
     return if inner.len() == 1 {
@@ -78,7 +79,7 @@ fn cdr(args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
     }
 }
 
-fn cons(args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
+fn cons<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
     let first = compile(args[0].clone());
     let second = compile(args[1].clone());
 
@@ -93,9 +94,9 @@ fn cons(args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
     Arc::new(List(x))
 }
 
-fn cond(args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
+fn cond<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
     for arg in args {
-        let List(ref elements) = *compile(arg) else { unreachable!() };
+        let List(ref elements) = *compile(arg.clone()) else { unreachable!() };
         let Symbol(b) = *compile(elements[0].clone()) else { unreachable!() };
         if b == "t" {
             return elements[1].clone();
@@ -104,13 +105,6 @@ fn cond(args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
     panic!("Unable to find matching case!");
 }
 
-
-fn lambda(arg: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
-    panic!(
-        "이거 '해줘'"
-    );
-    //Rc::new(SimLangToken::List(arg))
-}
 pub fn test()-> i8{
     
     return  0;
@@ -142,17 +136,25 @@ pub fn compile(token: Arc<SimLangToken>) -> Arc<SimLangToken> { /*
 
     match operator {
         "quote" => quote(no_first),
-        "atom" => atom(no_first),
-        "eq" => eq(no_first),
-        "car" => car(no_first),
-        "cdr" => cdr(no_first),
-        "cons" => cons(no_first),
-        "cond" => cond(no_first),
+        "atom" => atom(&no_first),
+        "eq" => eq(&no_first),
+        "car" => car(&no_first),
+        "cdr" => cdr(&no_first),
+        "cons" => cons(&no_first),
+        "cond" => cond(&no_first),
         _ => {
             let arguments = if no_first.len() == 1 { no_first[0].clone() } else { Arc::new(List(no_first)) };
-            match get_symbol(operator, &arguments) {
+            match get_symbol(operator) {
                 None => { token }
-                Some(result) => { result }
+                Some(result) => {
+                    let Lambda {domain, range} = result else { return token};
+                    let search_result = domain.iter().enumerate().find(|domain_pair| {
+                        let (index, domain_element) = domain_pair;
+                        (*domain_element).eq(&arguments)
+                    });
+                    let Some((search_index, _)) = search_result else { return token };
+                    range[search_index].clone()
+                }
             }
         }
     }
