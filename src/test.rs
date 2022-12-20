@@ -11,7 +11,7 @@ use crate::semantic_analyzer::Variable::Lambda;
 #[test]
 fn test_token_hash_and_equality_and_stuff_lol() {
     let f1 = String::from("f");
-    let args1 = parse_simlang("(1 2 3 4)").unwrap().drain(1..=1).next().unwrap();
+    let args1 = parse_simlang("(1 2 3 4)").unwrap().drain(0..=0).next().unwrap();
     let result1 = Arc::new(Symbol("0"));
     let v1 = Lambda {
         domain: vec![args1],
@@ -19,7 +19,7 @@ fn test_token_hash_and_equality_and_stuff_lol() {
     };
 
     let f2 = "f";
-    let args2 = parse_simlang("(1 2 3 4)").unwrap().drain(1..=1).next().unwrap();
+    let args2 = parse_simlang("(1 2 3 4)").unwrap().drain(0..=0).next().unwrap();
     let result2 = Arc::new(Symbol("0"));
     let v2 = Lambda {
         domain: vec![args2],
@@ -42,7 +42,7 @@ fn test_symbol_table() {
 
     put_symbol(f, v);
 
-    let code = parse_simlang("(f 1)").unwrap()[0].clone();
+    let code = parse_simlang("(f 1)").unwrap().drain(0..=0).next().unwrap();
     let compiled = compile(code);
 
     let to_test = Symbol("a");

@@ -22,16 +22,20 @@ fn quote(arg: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
     Arc::new(List(arg))
 }
 
-fn atom<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
-    Arc::new(Symbol(match *compile(args[0].clone()) {
+fn atom<'a>(mut args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
+    let first = args.drain(0..=0).next().unwrap();
+
+    Arc::new(Symbol(match *compile(first) {
         List(_) => "f",
         Symbol(_) => "t"
     }))
 }
 
-fn eq<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
-    let left = compile(args[0].clone());
-    let right = compile(args[1].clone());
+fn eq<'a>(mut args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
+    let mut drain = args.drain(0..=1);
+
+    let left = compile(drain.next().unwrap());
+    let right = compile(drain.next().unwrap());
 
     fn test(left: &SimLangToken, right: &SimLangToken) -> bool {
         match left {
@@ -64,12 +68,17 @@ fn eq<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
     Arc::new(Symbol(if test(&left, &right) { "t" } else { "f" }))
 }
 
-pub(crate) fn car<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
-    let List(ref elements) = *compile(args[0].clone()) else { unreachable!() };
-    compile(elements[0].clone())
+pub(crate) fn car(mut args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
+    let first_argument = args.drain(0..=0).next().unwrap();
+    let compiled = compile(first_argument);
+
+    let List(ref elements) = compiled.as_ref() else { unreachable!() };
+
+    let first_element = elements[0].clone();
+    compile(first_element)
 }
 
-pub(crate) fn cdr<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
+pub(crate) fn cdr(args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
     let List(ref elements) = *(compile(args[0].clone())) else { unreachable!() };
     let inner = elements[1..].to_vec();
     return if inner.len() == 1 {
@@ -79,7 +88,7 @@ pub(crate) fn cdr<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>>
     }
 }
 
-fn cons<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
+fn cons(args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
     let first = compile(args[0].clone());
     let second = compile(args[1].clone());
 
@@ -94,7 +103,7 @@ fn cons<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
     Arc::new(List(x))
 }
 
-fn cond<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
+fn cond(args: Vec<Arc<SimLangToken>>) -> Arc<SimLangToken> {
     for arg in args {
         let List(ref elements) = *compile(arg.clone()) else { unreachable!() };
         let Symbol(b) = *compile(elements[0].clone()) else { unreachable!() };
@@ -103,11 +112,6 @@ fn cond<'a>(args: &'a Vec<Arc<SimLangToken>>) -> Arc<SimLangToken<'a>> {
         }
     }
     panic!("Unable to find matching case!");
-}
-
-pub fn test()-> i8{
-    
-    return  0;
 }
 
 pub fn meaning_analysis(token: Arc<SimLangToken>) -> Arc<SimLangToken>{ //의미 분석 단계: 인터프린터 함수 실행 전에
@@ -124,24 +128,27 @@ pub fn compile(token: Arc<SimLangToken>) -> Arc<SimLangToken> { /*
     인자로 추가된 symbol_table은 compile 함수가 실행되는 지점에서의 정의되어있는 기호 테이블이다. 연산마다 기호 테이블이 조금씩 다르기 때문에 인자로 받았다.  def 연산은 사이드 이펙트이브로 compile 함수가 실행하는 SimLangToken은 def 가 없다.  
     symbol_table에는 반드시 사이드이펙트가 없는 순수 함수만이 있다.
     */
-    
-    
-    let List(ref elements) = *token else { return token };
+
+    if let Symbol(_) = token.as_ref() {
+        return token
+    };
+
+    let List(ref elements) = *token else { unreachable!() };
 
     let first = elements[0].clone();
-    let no_first = (elements[1..]).to_vec();
+    let no_first = elements[1..].to_vec();
 
     let Symbol(operator) = *first else { return token };
     /* */
 
     match operator {
         "quote" => quote(no_first),
-        "atom" => atom(&no_first),
-        "eq" => eq(&no_first),
-        "car" => car(&no_first),
-        "cdr" => cdr(&no_first),
-        "cons" => cons(&no_first),
-        "cond" => cond(&no_first),
+        "atom" => atom(no_first),
+        "eq" => eq(no_first),
+        "car" => car(no_first),
+        "cdr" => cdr(no_first),
+        "cons" => cons(no_first),
+        "cond" => cond(no_first),
         _ => {
             let arguments = if no_first.len() == 1 { no_first[0].clone() } else { Arc::new(List(no_first)) };
             match get_symbol(operator) {
